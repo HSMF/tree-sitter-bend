@@ -1,0 +1,11 @@
+BasedOnStyle: Chromium
+IndentWidth: 4
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveDeclarations: Consecutive
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+IncludeBlocks: Regroup
+AlignConsecutiveMacros: true
+IndentPPDirectives: AfterHash
+
