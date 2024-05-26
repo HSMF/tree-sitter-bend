@@ -2,7 +2,7 @@
   "name": "tree-sitter-bend",
   "version": "1.0.0",
   "description": "Treesitter grammar for Bend",
-  "main": "index.js",
+  "main": "bindings/node",
   "types": "bindings/node",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

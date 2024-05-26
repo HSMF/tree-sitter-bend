@@ -1,14 +1,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "tree_sitter/alloc.h"
 #include "tree_sitter/array.h"
 #include "tree_sitter/parser.h"
 
-enum TokenType { _INDENT, _DEDENT, _NEWLINE } ;
+enum TokenType { _INDENT, _DEDENT, _NEWLINE, ERROR_RECOVERY };
 
 struct bend_scanner {
     unsigned* indent_levels;
@@ -19,7 +18,7 @@ struct bend_scanner {
 
 #define N 1024
 static char* bs_print(struct bend_scanner* scanner) {
-    char*    s = malloc(N);
+    char*    s = ts_malloc(N);
     unsigned len;
     sprintf(s, "bs{cap=%d, len=%d, dedents=%d, [", scanner->cap, scanner->len,
             scanner->expected_dedents);
@@ -39,7 +38,7 @@ static void bend_scanner_init(struct bend_scanner* scanner) {
     scanner->cap              = 8;
     scanner->len              = 0;
     scanner->expected_dedents = 0;
-    scanner->indent_levels    = malloc(8 * sizeof(unsigned));
+    scanner->indent_levels    = ts_malloc(8 * sizeof(unsigned));
 }
 
 static unsigned bend_scanner_top(struct bend_scanner* scanner) {
@@ -60,7 +59,7 @@ static unsigned newsize(unsigned cap) {
 static void bend_scanner_push(struct bend_scanner* scanner, unsigned val) {
     if (scanner->len == scanner->cap) {
         unsigned newcap        = newsize(scanner->cap);
-        scanner->indent_levels = realloc(scanner->indent_levels, newcap);
+        scanner->indent_levels = ts_realloc(scanner->indent_levels, newcap);
         scanner->cap           = newcap;
     }
     scanner->indent_levels[scanner->len] = val;
@@ -77,7 +76,7 @@ static unsigned bend_scanner_pop(struct bend_scanner* scanner) {
 }
 
 void* tree_sitter_bend_external_scanner_create(void) {
-    struct bend_scanner* scanner = malloc(sizeof(struct bend_scanner));
+    struct bend_scanner* scanner = ts_malloc(sizeof(struct bend_scanner));
     bend_scanner_init(scanner);
     return scanner;
 }
@@ -119,7 +118,7 @@ void tree_sitter_bend_external_scanner_deserialize(void*       payload,
     result->len              = buf->len;
     result->cap              = buf->len;
     result->expected_dedents = buf->expected_dedents;
-    result->indent_levels    = malloc(result->cap * sizeof(unsigned));
+    result->indent_levels    = ts_malloc(result->cap * sizeof(unsigned));
 
     for (int i = 0; i < result->len; i++) {
         result->indent_levels[i] = data[i];
@@ -241,13 +240,18 @@ bool tree_sitter_bend_external_scanner_scan(void*       payload,
                                             TSLexer*    lexer,
                                             const bool* valid_symbols) {
     struct bend_scanner* scanner = (struct bend_scanner*)payload;
-    // printf("tree_sitter_bend_external_scanner_scan(%s, %p)\n",
-    //        bs_print(payload), lexer);
-    // printf("NEWLINE=%c, INDENT=%c, DEDENT=%c\n",
-    //        valid_symbols[NEWLINE] ? 'y' : 'n',
-    //        valid_symbols[INDENT] ? 'y' : 'n',
-    //        valid_symbols[DEDENT] ? 'y' : 'n');
-    // printf("%d '%c'\n", lexer->lookahead, lexer->lookahead);
+    printf("tree_sitter_bend_external_scanner_scan(%s, %p)\n",
+           bs_print(payload), lexer);
+    printf("NEWLINE=%c, INDENT=%c, DEDENT=%c\n",
+           valid_symbols[_NEWLINE] ? 'y' : 'n',
+           valid_symbols[_INDENT] ? 'y' : 'n',
+           valid_symbols[_DEDENT] ? 'y' : 'n');
+    printf("%d '%c'\n", lexer->lookahead, lexer->lookahead);
+
+    if (valid_symbols[ERROR_RECOVERY]) {
+        lexer->advance(lexer, true); // ?
+        return false;
+    }
 
     enum scan_result res;
 
